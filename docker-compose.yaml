@@ -15,16 +15,15 @@ services:
     ports:
       - "8003:8000"
     environment:
-      APPLICATION_ROOT: /
-      PBX_NAME: uw01
-      PBX_COMMAND_TIMEOUT: 600
+      APPLICATION_ROOT: /uw01
+      PBX_COMMAND_TIMEOUT: 300
       PBXD_CONF: /home/toolop/pbxd_conf/pbxd_uw01_conf.json
-
     volumes:
       - ./pbxd:/home/toolop/app/pbxd  # for development mount the local app in the container
       - ./pbxd_conf:/home/toolop/pbxd_conf
-    command: -b :8000 --workers 1 --access-logfile - --log-level DEBUG --reload
-
+    command: ["-b", ":8000", "--workers", "2", "--timeout", "300",
+      "--access-logfile", "-", "--log-level", "DEBUG",
+      "--reload"]
 
   # This emulates your app in the production nginx ingress
   nginx:
@@ -38,7 +37,9 @@ services:
           listen 80;
 
           location / {
-              proxy_pass http://app:8000/;
+            proxy_read_timeout 300s;
+            proxy_buffering off;
+            proxy_pass http://app:8000/;
           }
         }
     command: /bin/sh -c "echo $$NGINX_CONFIG > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"
