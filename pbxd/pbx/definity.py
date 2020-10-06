@@ -275,7 +275,7 @@ class Terminal(object):
         if fields is not None and len(fields) > 0:
             self.logger.debug('fields: {}'.format(fields))
             ids = ('\t'.join(sorted(fields))).strip()
-            data = ('\t'.join([fields[k] for k in sorted(fields)])).strip()
+            data = ('\t'.join([fields[k] for k in sorted(fields)]))
             self.logger.debug('send: f{}'.format(ids))
             self.session.sendline('f{}'.format(ids))  # fields
             self.logger.debug('send: d{}'.format(data))
@@ -286,7 +286,7 @@ class Terminal(object):
         # Read the response and collect the OSSI objects
         response_fields = []
         response_data = []
-        response_error = None
+        response_errors = []
         complete_output = False
         ossi_objects = []
         raw_lines = []
@@ -305,12 +305,12 @@ class Terminal(object):
                 timeout=self.pbx_command_timeout
             )
             if index == 0:  # TIMEOUT
-                response_error = 'PBX timeout'
-                self.logger.error('{}: {}\n{}'.format(response_error, command, self.session.before))
+                response_errors.append('PBX timeout')
+                self.logger.error('{}: {}\n{}'.format(response_errors, command, self.session.before))
                 complete_output = True
             elif index == 1:  # EOF
-                response_error = 'PBX connection failed with EOF'
-                self.logger.error('{}: {}\n{}'.format(response_error, command, self.session.before))
+                response_errors.append('PBX connection failed with EOF')
+                self.logger.error('{}: {}\n{}'.format(response_errors, command, self.session.before))
                 complete_output = True
             if index >= 2:
                 self.logger.debug('after: {}'.format(self.session.after))
@@ -326,10 +326,9 @@ class Terminal(object):
                     response_data += field_values
                 elif index == 4:  # match an error line
                     error_values = raw_line[1:].rstrip('\r\n').split(' ', 3)
-                    error_field = error_values[1]
-                    error_message = error_values[3]
-                    response_error = '{} {}'.format(error_field, error_message)
-                    self.logger.warning('error: {}'.format(response_error))
+                    error_message = '{} {}'.format(error_values[1], error_values[3])
+                    response_errors.append(error_message)
+                    self.logger.warning('error: {}'.format(error_message))
                 elif index == 5:  # n = next object starting
                     self.logger.debug("object complete")
                     if len(response_data) > 0:
@@ -347,8 +346,8 @@ class Terminal(object):
                     complete_output = True
 
         response_obj = {"ossi_objects": ossi_objects}
-        if response_error is not None:
-            response_obj['error'] = response_error
+        if len(response_errors) > 0:
+            response_obj['error'] = "\n".join(response_errors)
         if debug is not False:
             response_obj['debug'] = raw_lines
         self.logger.debug(response_obj)

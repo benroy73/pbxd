@@ -63,13 +63,11 @@ def legacy_xml_post():
         if dom['command'].get('field') is not None:
             if not isinstance(dom['command']['field'], list):
                 id = dom['command']['field']['@fid']
-                val = dom['command']['field'].get('#text', '')
-                fields[id] = val
+                fields[id] = dom['command']['field'].get('#text', ' ')
             else:
                 for f in dom['command'].get('field', {}):
                     id = f['@fid']
-                    val = f.get('#text', '')
-                    fields[id] = val
+                    fields[id] = f.get('#text', ' ')
     except Exception:
         abort(400, description="Bad request")
 
